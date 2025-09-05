@@ -1,0 +1,38 @@
+name: Fetch farmacias
+on:
+  schedule:
+    - cron: '0 3 * * *'   # daily 03:00 UTC
+  workflow_dispatch: {}
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch JSON from MINSAL
+        run: |
+          set -e
+          curl -L "https://midas.minsal.cl/farmacia_v2/WS/getLocales.php" -o farmacias.json
+      - name: Convert to CSV with Python
+        run: |
+          python3 - << 'PY'
+import json, csv, sys
+with open("farmacias.json", encoding="utf-8") as f:
+    j = json.load(f)
+rows = j if isinstance(j, list) else j.get("locales") or j.get("datos") or []
+cols = ["local_id","local_nombre","localidad_nombre","comuna_nombre","fk_region",
+        "local_direccion","local_telefono","local_lat","local_lng",
+        "funcionamiento_dia","funcionamiento_hora_apertura","funcionamiento_hora_cierre"]
+with open("farmacias.csv","w",newline="",encoding="utf-8") as f:
+    w = csv.DictWriter(f, fieldnames=cols)
+    w.writeheader()
+    for r in rows:
+        w.writerow({c: ("" if r.get(c) is None else str(r.get(c))) for c in cols})
+print("Wrote farmacias.csv with", len(rows), "rows")
+PY
+      - name: Commit changes
+        run: |
+          git config user.name "gh-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "update dataset" || echo "No changes"
+          git push
