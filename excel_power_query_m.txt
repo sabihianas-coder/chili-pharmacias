@@ -1,0 +1,5 @@
+let
+    Source = Csv.Document(Web.Contents("https://raw.githubusercontent.com/<your-username>/<your-repo>/main/farmacias.csv"),[Delimiter=",", Columns=12, Encoding=65001, QuoteStyle=QuoteStyle.Csv]),
+    PromotedHeaders = Table.PromoteHeaders(Source, [PromoteAllScalars=true])
+in
+    PromotedHeaders
